@@ -1,0 +1,10 @@
+POST /users/create HTTP/1.1
+Host: example.com
+Content-Type: application/json
+Content-Length: 82
+
+{
+  "username": "your_username",
+  "password": "your_password",
+  "email": "youremail@example.com"
+}
