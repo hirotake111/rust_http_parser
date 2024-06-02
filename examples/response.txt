@@ -1,8 +1,0 @@
-HTTP/1.1 200 OK
-Content-Type: text/html; charset=UTF-8
-Content-Length: 31475  (This number will vary depending on the actual content)
-Date: Sat, 01 Jun 2024 08:47:00 GMT
-Connection: keep-alive
-Server: nginx
-
-<html><h1>hello world</h1></html>

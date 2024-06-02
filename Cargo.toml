@@ -8,8 +8,14 @@ version = "0.1.0"
 [dependencies]
 
 [[example]]
-name = "get"
-path = "examples/get.rs"
+name = "request_get"
+path = "examples/request_get.rs"
 [[example]]
-name = "post"
-path = "examples/post.rs"
+name = "request_post"
+path = "examples/request_post.rs"
+[[example]]
+name = "response_get"
+path = "examples/response_get.rs"
+[[example]]
+name = "response_post"
+path = "examples/response_post.rs"
