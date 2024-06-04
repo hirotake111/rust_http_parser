@@ -9,7 +9,7 @@ pub mod http {
     #[derive(Debug, Clone)]
     pub struct HTTPRequest {
         request_line: RequestLine,
-        headers: Option<HTTPHeaders>,
+        headers: HTTPHeaders,
         body: Option<String>,
     }
 
@@ -20,13 +20,9 @@ pub mod http {
             let mut iterator = reader.lines().map_while(Result::ok).peekable();
             let request_line = iterator
                 .next()
-                .ok_or("failed to get request line".to_string())?
+                .ok_or("failed to get request line")?
                 .parse()?;
-            let headers = if iterator.peek().is_some() {
-                Some(HTTPHeaders::new(&mut iterator)?)
-            } else {
-                None
-            };
+            let headers = HTTPHeaders::new(&mut iterator)?;
             let body = if iterator.peek().is_some() {
                 Some(iterator.collect())
             } else {
@@ -82,8 +78,8 @@ pub mod http {
                 if line.is_empty() {
                     break;
                 }
-                let mut line = line.split(": ");
-                let key = line.next().ok_or("failed to get key")?.to_string();
+                let mut line = line.split(':');
+                let key = line.next().ok_or("failed to get key")?.trim().to_string();
                 let value = line
                     .next()
                     .ok_or(format!("failed to get value for key: {key}"))?
@@ -127,7 +123,7 @@ pub mod http {
     #[derive(Debug, Clone)]
     pub struct HTTPResponse {
         status_line: StatusLine,
-        headers: Option<HTTPHeaders>,
+        headers: HTTPHeaders,
         body: Option<String>,
     }
 
@@ -140,11 +136,12 @@ pub mod http {
                 .next()
                 .ok_or("failed to get status line")?
                 .parse()?;
-            let headers = if iterator.peek().is_some() {
-                Some(HTTPHeaders::new(&mut iterator)?)
-            } else {
-                None
-            };
+            let headers = HTTPHeaders::new(&mut iterator)?;
+            // let headers = if iterator.peek().is_some() {
+            //     Some(HTTPHeaders::new(&mut iterator)?)
+            // } else {
+            //     None
+            // };
             let body = if iterator.peek().is_some() {
                 Some(iterator.collect())
             } else {
