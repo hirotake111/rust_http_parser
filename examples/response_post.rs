@@ -1,8 +1,10 @@
+use std::io::BufReader;
+
 use rust_http_parser::http::HTTPResponse;
 
 fn main() {
-    let input = std::fs::read_to_string("examples/response_post.txt").unwrap();
-    let response = input.parse::<HTTPResponse>().unwrap();
-    println!("====\n{input}\n====\n");
-    dbg!(response);
+    let file = std::fs::File::open("examples/response_post.txt").unwrap();
+    let reader = BufReader::new(file);
+    let request = HTTPResponse::try_from(reader).unwrap();
+    dbg!(request);
 }

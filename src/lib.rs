@@ -1,6 +1,10 @@
 #[allow(dead_code)]
 pub mod http {
-    use std::{collections::HashMap, str::FromStr};
+    use std::{
+        collections::HashMap,
+        io::{BufRead, BufReader, Read},
+        str::FromStr,
+    };
 
     #[derive(Debug, Clone)]
     pub struct HTTPRequest {
@@ -9,11 +13,11 @@ pub mod http {
         body: Option<String>,
     }
 
-    impl FromStr for HTTPRequest {
-        type Err = String;
+    impl<R: Read> TryFrom<BufReader<R>> for HTTPRequest {
+        type Error = String;
 
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let mut iterator = s.split("\r\n").peekable();
+        fn try_from(reader: BufReader<R>) -> Result<Self, Self::Error> {
+            let mut iterator = reader.lines().map_while(Result::ok).peekable();
             let request_line = iterator
                 .next()
                 .ok_or("failed to get request line".to_string())?
@@ -47,18 +51,18 @@ pub mod http {
         type Err = String;
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let mut iterator = s.split(" ").into_iter();
+            let mut iterator = s.split(' ');
             let method: Method = iterator
                 .next()
-                .ok_or("failed to get HTTP method".to_string())
-                .and_then(|method| method.parse())?;
+                .ok_or("failed to get HTTP method")?
+                .parse()?;
             let request_target = iterator
                 .next()
-                .ok_or("failed to get request target".to_string())?
+                .ok_or("failed to get request target")?
                 .to_string();
             let http_version = iterator
                 .next()
-                .ok_or("failed to get HTTP version".to_string())?
+                .ok_or("failed to get HTTP version")?
                 .to_string();
             Ok(RequestLine {
                 method,
@@ -70,20 +74,16 @@ pub mod http {
 
     #[derive(Debug, Clone)]
     struct HTTPHeaders(HashMap<String, String>);
+
     impl HTTPHeaders {
-        pub fn new<'a>(
-            iterator: &mut impl Iterator<Item = &'a str>,
-        ) -> Result<HTTPHeaders, String> {
+        pub fn new(iterator: &mut impl Iterator<Item = String>) -> Result<HTTPHeaders, String> {
             let mut headers = HashMap::new();
             for line in iterator {
-                if line == "" {
+                if line.is_empty() {
                     break;
                 }
                 let mut line = line.split(": ");
-                let key = line
-                    .next()
-                    .ok_or("failed to get key".to_string())?
-                    .to_string();
+                let key = line.next().ok_or("failed to get key")?.to_string();
                 let value = line
                     .next()
                     .ok_or(format!("failed to get value for key: {key}"))?
@@ -131,15 +131,15 @@ pub mod http {
         body: Option<String>,
     }
 
-    impl FromStr for HTTPResponse {
-        type Err = String;
+    impl<R: Read> TryFrom<BufReader<R>> for HTTPResponse {
+        type Error = String;
 
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let mut iterator = s.split("\r\n").peekable();
-            let status_line = iterator
+        fn try_from(reader: BufReader<R>) -> Result<Self, Self::Error> {
+            let mut iterator = reader.lines().map_while(Result::ok).peekable();
+            let status_line: StatusLine = iterator
                 .next()
-                .ok_or("failed to get status line".to_string())
-                .and_then(|s| s.parse::<StatusLine>())?;
+                .ok_or("failed to get status line")?
+                .parse()?;
             let headers = if iterator.peek().is_some() {
                 Some(HTTPHeaders::new(&mut iterator)?)
             } else {
@@ -169,18 +169,18 @@ pub mod http {
         type Err = String;
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let mut iterator = s.split(" ");
+            let mut iterator = s.split(' ');
             let http_version: HTTPVersion = iterator
                 .next()
-                .ok_or("failed to get HTTP version".to_string())
-                .and_then(|s| s.parse())?;
-            let status_code = iterator
+                .ok_or("failed to get HTTP version")?
+                .parse()?;
+            let status_code: StatusCode = iterator
                 .next()
-                .ok_or("no status code to be parsed".to_string())
-                .and_then(|s| s.parse::<StatusCode>())?;
+                .ok_or("no status code to be parsed")?
+                .parse()?;
             let status_text = iterator
                 .next()
-                .ok_or("failed to get status text".to_string())?
+                .ok_or("failed to get status text")?
                 .to_string();
             Ok(StatusLine {
                 http_version,
@@ -199,7 +199,7 @@ pub mod http {
             if s.starts_with("HTTP/") {
                 Ok(HTTPVersion(s.to_string()))
             } else {
-                Err("invalid HTTP Version".to_string())
+                Err(format!("invalid HTTP Version: {}", s))
             }
         }
     }
@@ -208,11 +208,10 @@ pub mod http {
     struct StatusCode(u16);
     impl FromStr for StatusCode {
         type Err = String;
-
         fn from_str(s: &str) -> Result<Self, Self::Err> {
             s.parse::<u16>()
-                .or(Err("failed parsing status code".to_string()))
-                .map(|n| StatusCode(n))
+                .or(Err(format!("error parsing status code: {}", s)))
+                .map(StatusCode)
         }
     }
 }
